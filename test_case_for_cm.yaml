@@ -1,0 +1,78 @@
+# CM
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myconfigmap
+data:       # set the configurations as key : val pairs
+  # property-like keys; each key maps to a simple value
+  var1: "variable01"
+  file_name1: "var2.yaml"
+
+  # file-like keys
+  file_name2.config: |
+    var3=variable03
+  var2.yaml: |
+    var2=variable02
+
+---
+# Pod01
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+  - name: mypod
+    image: redis
+    volumeMounts:
+    - name: foo
+      mountPath: "/config" # if no such path, will create
+      readOnly: true
+  volumes:
+  - name: foo
+    configMap:
+      name: myconfigmap
+      items:
+      - key: "var1"
+        path: "var_name_01"
+      - key: "file_name1"
+        path: "file_name_var02"
+      - key: "var2.yaml"
+        path: "var_name_02"
+
+---
+# Pod02
+apiVersion: v1
+kind: Pod
+metadata:
+  name: env-configmap
+spec:
+  containers:
+  - name: envars-test-container
+    image: nginx
+    env:
+    - name: VAR02
+      valueFrom:
+        configMapKeyRef:
+          name: myconfigmap
+          key: var2.yaml
+    - name: FILE_VAR
+      valueFrom:
+        configMapKeyRef:
+          name: myconfigmap
+          key: file_name1
+
+---
+# Pod03
+apiVersion: v1
+kind: Pod
+metadata:
+  name: env-configmap
+spec:
+  containers:
+    - name: app
+      command: ["/bin/sh", "-c", "printenv"]
+      image: busybox:latest
+      envFrom:
+        - configMapRef:
+            name: myconfigmap
